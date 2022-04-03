@@ -2,8 +2,9 @@
 
 Improves Dark Souls 3 experience. Temporarily patches the game executable. Don't use online to avoid bans.
 
-## Dependencies
+## Compatibility
 
+- Dark Souls 3 1.15
 - Python 3.8 or newer
 
 ## Usage
