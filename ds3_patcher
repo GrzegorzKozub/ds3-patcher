@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -10,73 +11,78 @@ from shutil import rmtree
 if __name__ != '__main__':
     sys.exit(1)
 
-game_exe_hex: str = ''
+EXE: str = 'DarkSoulsIII.exe'
+exe_hex: str = ''
+
+this_file: str = os.path.basename(__file__)
+
+dir_original: str = Path('.')
+dir_temp: str = Path(f'{this_file}_temp')
+
 
 def parse_args() -> tuple[argparse.Namespace, list[str]]:
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument('-s', '--skip-logos',
-            action='store_true', help='skip publisher and developer logos')
+                            action='store_true', help='skip publisher and developer logos')
         double_dash = sys.argv.index('--')
         return parser.parse_args(sys.argv[1:double_dash]), sys.argv[1 + double_dash:]
     except ValueError:
-        print(parser.format_usage().replace('\n', '') + " -- %command%")
+        print(parser.format_usage().replace('\n', '') + ' -- %command%')
         sys.exit(1)
+
 
 def open_hex(path: str, file: str) -> str:
     with open(path / file, 'rb') as f:
         return f.read().hex()
 
-def patch_game_exe(pattern: str, patch: str) -> None:
-    global game_exe_hex
-    if (match := re.search(pattern.replace(' ', ''), game_exe_hex)) is None:
+
+def patch_exe_hex(pattern: str, patch: str) -> None:
+    global exe_hex
+    if (match := re.search(pattern.replace(' ', ''), exe_hex)) is None:
         print('patch pattern not found')
         sys.exit(1)
     addr = match.span()[0]
     patch = patch.replace(' ', '')
-    game_exe_hex = game_exe_hex[:addr] + patch + game_exe_hex[addr + len(patch):]
+    exe_hex = exe_hex[:addr] + patch + exe_hex[addr + len(patch):]
 
-args, steam_cmd = parse_args()
 
-game_dir: str = Path('.')
-GAME_EXE: str = 'DarkSoulsIII.exe'
+def create_temp_dir(original: str, temp: str, skip_files: list[str]) -> None:
+    if not temp.is_dir():
+        temp.mkdir()
+    for d in [d for d in original.rglob('*') if d.is_dir()]:
+        if d == temp:
+            continue
+        if not (temp / d).is_dir():
+            (temp / d).mkdir(parents=True)
+    for f in [f for f in original.rglob('*') if f.is_file()]:
+        if f.name in skip_files:
+            continue
+        if not (temp / f).is_file():
+            f.link_to(temp / f)
 
-game_exe_hex = open_hex(game_dir, GAME_EXE)
+
+def save_exe_hex(path: str, file: str) -> None:
+    global exe_hex
+    with open(path / file, 'wb') as f:
+        f.write(bytes.fromhex(exe_hex))
+    del exe_hex
+
+
+def start_game(cmd: list[str], working_dir: str, exe: str) -> None:
+    cmd[-1] = Path(cmd[-1]).parent.absolute() / working_dir / exe
+    subprocess.run(cmd, cwd=cmd[-1].parent.absolute(), check=False)
+
+
+args, command = parse_args()
+exe_hex = open_hex(dir_original, EXE)
 
 if args.skip_logos:
-    patch_game_exe(
+    patch_exe_hex(
         'e8 1c ba fb',
         '48 31 c0 48 89 02 49 89 04 24 90 90 90 90 90 90 90 90 90 90')
 
-del game_exe_hex
-
-sys.exit(0)
-
-
-game_dir_patched = Path('ds3-patcher-tmp')
-
-if not game_dir_patched.is_dir():
-    game_dir_patched.mkdir()
-
-game_dirs = [d for d in game_dir.rglob('*') if d.is_dir()]
-for d in game_dirs:
-    if d == game_dir_patched:
-        continue
-    if not (game_dir_patched / d).is_dir():
-        (game_dir_patched / d).mkdir(parents=True)
-
-game_files = [f for f in game_dir.rglob('*') if f.is_file()]
-for f in game_files:
-    if f.name in [GAME_EXE, 'ds3-patcher']:
-        continue
-    if not (game_dir_patched / f).is_file():
-        f.link_to(game_dir_patched / f)
-
-with open(game_dir_patched / GAME_EXE, 'wb') as f:
-    f.write(bytes.fromhex(game_exe_hex))
-
-steam_cmd = sys.argv[1 + sys.argv.index('--'):]
-steam_cmd[-1] = Path(steam_cmd[-1]).parent.absolute() / game_dir_patched / GAME_EXE
-subprocess.run(args=steam_cmd, cwd=steam_cmd[-1].parent.absolute(), check=False)
-
-rmtree(game_dir_patched)
+create_temp_dir(dir_original, dir_temp, [EXE, this_file])
+save_exe_hex(dir_temp, EXE)
+start_game(command, dir_temp, EXE)
+rmtree(dir_temp)
