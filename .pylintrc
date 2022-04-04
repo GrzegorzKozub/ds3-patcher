@@ -1,0 +1,6 @@
+[MESSAGES CONTROL]
+disable=global-statement,
+        missing-function-docstring,
+        missing-module-docstring
+[FORMAT]
+good-names=f,game_exe_hex
