@@ -25,10 +25,13 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
         parser = argparse.ArgumentParser()
         parser.add_argument('-s', '--skip-logos',
                             action='store_true', help='skip publisher and developer logos')
-        double_dash = sys.argv.index('--')
-        return parser.parse_args(sys.argv[1:double_dash]), sys.argv[1 + double_dash:]
+        dbl_dash = sys.argv.index('--')
+        cmd = sys.argv[1 + dbl_dash:]
+        if not cmd:
+            raise ValueError
+        return parser.parse_args(sys.argv[1:dbl_dash]), cmd
     except ValueError:
-        print(parser.format_usage().replace('\n', '') + ' -- %command%')
+        print(parser.format_usage().replace('\n', '') + ' -- <command>')
         sys.exit(1)
 
 
@@ -69,12 +72,21 @@ def save_exe_hex(path: str, file: str) -> None:
     del exe_hex
 
 
+def switch_path(cmd: str, path: str) -> str:
+    # TODO: path
+    return cmd
+
 def start_game(cmd: list[str], working_dir: str, exe: str) -> None:
     cmd[-1] = Path(cmd[-1]).parent.absolute() / working_dir / exe
     subprocess.run(cmd, cwd=cmd[-1].parent.absolute(), check=False)
 
 
 args, command = parse_args()
+
+if not args.skip_logos:
+    start_game(command, dir_temp, EXE)
+    sys.exit(0)
+
 exe_hex = open_hex(dir_original, EXE)
 
 if args.skip_logos:
@@ -84,5 +96,6 @@ if args.skip_logos:
 
 create_temp_dir(dir_original, dir_temp, [EXE, this_file])
 save_exe_hex(dir_temp, EXE)
+command = switch_path(command, None)
 start_game(command, dir_temp, EXE)
 rmtree(dir_temp)
