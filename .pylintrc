@@ -1,5 +1,6 @@
 [MESSAGES CONTROL]
-disable=global-statement,
+disable=broad-except,
+        global-statement,
         missing-function-docstring,
         missing-module-docstring
 

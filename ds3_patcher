@@ -12,19 +12,16 @@ from shutil import rmtree
 if __name__ != '__main__':
     sys.exit(1)
 
-EXE: str = 'DarkSoulsIII.exe'
 exe_hex: str = ''
 
 this_file: str = os.path.basename(__file__)
 
-dir_original: str = Path('.')
-dir_temp: str = Path(f'{this_file}_temp')
-
-logging.basicConfig(filename=f'{this_file}.log', level=logging.INFO)
+logging.basicConfig(filename=f'{this_file}.log',
+                    format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 log = logging.getLogger(this_file)
 
 
-def parse_cmdline() -> tuple[argparse.Namespace, list[str]]:
+def parse_invocation() -> tuple[argparse.Namespace, list[str]]:
     dbl_dash = sys.argv.index('--')
     args = sys.argv[1:dbl_dash]
     log.info('arguments: %s', args)
@@ -35,76 +32,94 @@ def parse_cmdline() -> tuple[argparse.Namespace, list[str]]:
                         action='store_true', help='skip publisher and developer logos')
     return parser.parse_args(args), cmd
 
-def open_hex(path: str, file: str) -> str:
-    with open(path / file, 'rb') as f:
+
+def parse_command(cmd: str) -> tuple[str, str]:
+    path = Path(cmd[-1])
+    return path.parent.absolute(), path.name
+
+
+def create_temp_dir(temp: str, skip_files: list[str]) -> None:
+    current = Path('.')
+    if not temp.is_dir():
+        temp.mkdir()
+    for d in [d for d in current.rglob('*') if d.is_dir()]:
+        if d == temp:
+            continue
+        if not (temp/d).is_dir():
+            (temp/d).mkdir(parents=True)
+    for f in [f for f in current.rglob('*') if f.is_file()]:
+        if f.name in skip_files:
+            continue
+        if not (temp/f).is_file():
+            f.link_to(temp/f)
+
+
+def remove_temp_dir(temp: str) -> None:
+    rmtree(temp)
+
+
+def open_hex(folder: str, file: str) -> str:
+    with open(folder/file, 'rb') as f:
         return f.read().hex()
 
 
 def patch_exe_hex(pattern: str, patch: str) -> None:
     global exe_hex
     if (match := re.search(pattern.replace(' ', ''), exe_hex)) is None:
-        logging.error(f'patch pattern {pattern} not found')
+        log.error('patch pattern %s not found', pattern)
         sys.exit(1)
     addr = match.span()[0]
     patch = patch.replace(' ', '')
     exe_hex = exe_hex[:addr] + patch + exe_hex[addr + len(patch):]
 
 
-def create_temp_dir(original: str, temp: str, skip_files: list[str]) -> None:
-    if not temp.is_dir():
-        temp.mkdir()
-    for d in [d for d in original.rglob('*') if d.is_dir()]:
-        if d == temp:
-            continue
-        if not (temp / d).is_dir():
-            (temp / d).mkdir(parents=True)
-    for f in [f for f in original.rglob('*') if f.is_file()]:
-        if f.name in skip_files:
-            continue
-        if not (temp / f).is_file():
-            f.link_to(temp / f)
-
-
-def save_exe_hex(path: str, file: str) -> None:
+def save_exe_hex(folder: str, file: str) -> None:
     global exe_hex
-    with open(path / file, 'wb') as f:
+    with open(folder/file, 'wb') as f:
         f.write(bytes.fromhex(exe_hex))
     del exe_hex
 
 
-def switch_path(cmd: str, path: str) -> str:
-    # TODO: path
-    return cmd
+# def switch_path(cmd: str, path: str) -> str:
+#     return cmd
+
+# def start_game(cmd: list[str], working_dir: str, exe: str) -> None:
+#     cmd[-1] = Path(cmd[-1]).parent.absolute() / working_dir / exe
+#     subprocess.run(cmd, cwd=cmd[-1].parent.absolute(), check=False)
 
 
-def start_game(cmd: list[str], working_dir: str, exe: str) -> None:
-    cmd[-1] = Path(cmd[-1]).parent.absolute() / working_dir / exe
-    subprocess.run(cmd, cwd=cmd[-1].parent.absolute(), check=False)
+def start_game(cmd: list[str], cwd: str) -> None:
+    subprocess.run(cmd, cwd=cwd, check=False)
 
 
 try:
     log.info('start')
-    arguments, command = parse_cmdline()
 
-except Exception as e:
-    log.error('error', exc_info=True)
+    arguments, command = parse_invocation()
+    game_dir, exe = parse_command(command)
 
-log.info('end')
-exit()
+    if arguments.skip_logos:  # any arguments?
 
-if not arguments.skip_logos:
-    start_game(command, dir_temp, EXE)
-    sys.exit(0)
+        temp_dir = game_dir/f'{this_file}_temp'
+        create_temp_dir(temp_dir, [exe, this_file])
 
-exe_hex = open_hex(dir_original, EXE)
+        exe_hex = open_hex(game_dir, exe)
 
-if arguments.skip_logos:
-    patch_exe_hex(
-        'e8 1c ba fb',
-        '48 31 c0 48 89 02 49 89 04 24 90 90 90 90 90 90 90 90 90 90')
+        if arguments.skip_logos:
+            patch_exe_hex(
+                'e8 1c ba fb',
+                '48 31 c0 48 89 02 49 89 04 24 90 90 90 90 90 90 90 90 90 90')
 
-create_temp_dir(dir_original, dir_temp, [EXE, this_file])
-save_exe_hex(dir_temp, EXE)
-command = switch_path(command, None)
-start_game(command, dir_temp, EXE)
-rmtree(dir_temp)
+        save_exe_hex(temp_dir, exe)
+
+        start_game(command, temp_dir)
+
+        remove_temp_dir(temp_dir)
+
+    else:
+        start_game(command, game_dir)
+
+    log.info('finish')
+
+except Exception:
+    log.error('unknown error:', exc_info=True)
