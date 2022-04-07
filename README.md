@@ -9,28 +9,28 @@ Improves Dark Souls 3 experience. Temporarily patches the game executable. Don't
 
 ## Usage
 
-1. Copy `ds3-patcher` to the game directory
-2. In Steam, set the game launch options to `python ds3-patcher <arguments> -- %command%`
+1. Copy `ds3_patcher` to the game directory
+2. If you're on Linux, `chmod u+x ds3_patcher`
+2. In Steam, set the game launch options to `python ds3_patcher <arguments> -- %command%`
 
 ### Examples
 
-In Linux, other tools can be enabled and configured in different ways
+In Linux, there are multiple ways to launch `ds3_patcher` and setup other tools
 
 ```zsh
-python ds3-patcher --s -- env MANGOHUD=1 %command%
-python ds3-patcher --skip-intro -- mangohud gamemoderun %command%
+python ds3_patcher --s -- env MANGOHUD=1 %command%
+./ds3_patcher --skip-intro -- mangohud gamemoderun %command%
 ```
 
 In Windows, use `pythonw` to prevent showing a terminal window
 
 ```zsh
-pythonw ds3-patcher --all -- %command%
+pythonw ds3_patcher -s -- %command%
 ```
 
 ## Features
 
-- `-s` or `--skip-intro` - skip intro logos
-- `--all` - enable all options
+- `-s` or `--skip-intro` - skip publisher and developer logos
 
 ## Credits
 
