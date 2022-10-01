@@ -83,37 +83,50 @@ def save_exe_hex(path: str) -> None:
 def switch_command(cmd: list[str], path: str) -> None:
     cmd[-1] = str(path)
 
+def sync_save() -> None:
+    log.info('sync save')
+    # subprocess.run(['git', 'pull'], cwd=Path(os.getenv('HOME') + '/code/ds3-save').absolute(), check=True)
+
+
+def sync_save_post() -> None:
+    log.info('sync save post')
+    p = subprocess.Popen(['git', 'status', '--porcelain'], universal_newlines=True, stdout=subprocess.PIPE, cwd=Path(os.getenv('HOME') + '/code/ds3-save').absolute())
+    d = p.stdout.readline();
+    x = len(d) > 0
+
 
 def start_game(cmd: list[str]) -> None:
     log.info('start %s', cmd)
-    subprocess.run(cmd, cwd=Path(cmd[-1]).parent.absolute(), check=False)
+    # subprocess.run(cmd, cwd=Path(cmd[-1]).parent.absolute(), check=False)
 
 
 try:
-    arguments, command = parse_invocation()
-    game_dir, exe = parse_command(command)
+    # arguments, command = parse_invocation()
+    # game_dir, exe = parse_command(command)
 
-    if arguments.skip_logos:  # any arguments?
+    # if arguments.skip_logos:  # any arguments?
 
-        temp_dir = game_dir/f'{this_file}_temp'
-        create_temp_dir(temp_dir, [exe, this_file])
+    #     temp_dir = game_dir/f'{this_file}_temp'
+    #     create_temp_dir(temp_dir, [exe, this_file])
 
-        exe_hex = open_hex(game_dir/exe)
+    #     exe_hex = open_hex(game_dir/exe)
 
-        if arguments.skip_logos:
-            patch_exe_hex(
-                'e8 1c ba fb',
-                '48 31 c0 48 89 02 49 89 04 24 90 90 90 90 90 90 90 90 90 90')
+    #     if arguments.skip_logos:
+    #         patch_exe_hex(
+    #             'e8 1c ba fb',
+    #             '48 31 c0 48 89 02 49 89 04 24 90 90 90 90 90 90 90 90 90 90')
 
-        save_exe_hex(temp_dir/exe)
+    #     save_exe_hex(temp_dir/exe)
 
-        switch_command(command, temp_dir/exe)
-        start_game(command)
+    #     switch_command(command, temp_dir/exe)
+    #     start_game(command)
 
-        remove_temp_dir(temp_dir)
+    #     remove_temp_dir(temp_dir)
 
-    else:
-        start_game(command)
+    # else:
+    #    start_game(command)
+    sync_save()
+    sync_save_post()
 
 except Exception:
     log.error('unknown error:', exc_info=True)
