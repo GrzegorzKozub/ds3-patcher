@@ -34,8 +34,10 @@ def parse_invocation() -> tuple[argparse.Namespace, list[str]]:
     cmd = sys.argv[1 + dbl_dash:]
     log.info('command: %s', cmd)
     parser = argparse.ArgumentParser(exit_on_error=False)
-    parser.add_argument('-s', '--skip-logos',
+    parser.add_argument('-i', '--skip-logos',
                         action='store_true', help='skip publisher and developer logos')
+    parser.add_argument('-s', '--sync-save',
+                        action='store_true', help='sync save via remote git repository')
     return parser.parse_args(args), cmd
 
 
@@ -112,17 +114,19 @@ def push_save() -> None:
 
 
 def start_game(cmd: list[str]) -> None:
-    fetch_save()
+    if arguments.sync_save:
+        fetch_save()
     log.info('start %s', cmd)
     subprocess.run(cmd, cwd=Path(cmd[-1]).parent.absolute(), check=False)
-    push_save()
+    if arguments.sync_save:
+        push_save()
 
 
 try:
     arguments, command = parse_invocation()
     game_dir, exe = parse_command(command)
 
-    if arguments.skip_logos:  # any arguments?
+    if arguments.skip_logos:  # any arguments to justify temp dir?
 
         temp_dir = game_dir/f'{this_file}_temp'
         create_temp_dir(temp_dir, [exe, this_file])
