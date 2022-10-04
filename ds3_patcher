@@ -6,7 +6,6 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
 
@@ -108,9 +107,8 @@ def push_save() -> None:
                               stdout=subprocess.PIPE, universal_newlines=True).stdout.readline()
     if len(status) > 0:
         in_save_path(['git', 'add', '.'])
-        in_save_path(
-            ['git', 'commit', '-m', datetime.now().strftime('%Y%m%d%H%M')])
-        in_save_path(['git', 'push'])
+        in_save_path(['git', 'commit', '--amend', '--no-edit'])
+        in_save_path(['git', 'push', '--force'])
 
 
 def start_game(cmd: list[str]) -> None:
