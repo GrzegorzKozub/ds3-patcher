@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
 
@@ -101,14 +102,19 @@ def fetch_save() -> None:
     in_save_path(['git', 'pull'])
 
 
-def push_save() -> None:
+def push_save(overwrite: bool) -> None:
     log.info('push save to %s', save_path)
     status = subprocess.Popen(['git', 'status', '--porcelain'], cwd=save_path,
                               stdout=subprocess.PIPE, universal_newlines=True).stdout.readline()
     if len(status) > 0:
         in_save_path(['git', 'add', '.'])
-        in_save_path(['git', 'commit', '--amend', '--no-edit'])
-        in_save_path(['git', 'push', '--force'])
+        if overwrite:
+            in_save_path(['git', 'commit', '--amend', '--no-edit'])
+            in_save_path(['git', 'push', '--force'])
+        else:
+            in_save_path(
+                ['git', 'commit', '-m', datetime.now().strftime('%Y%m%d%H%M')])
+            in_save_path(['git', 'push'])
 
 
 def start_game(cmd: list[str]) -> None:
@@ -117,7 +123,7 @@ def start_game(cmd: list[str]) -> None:
     log.info('start %s', cmd)
     subprocess.run(cmd, cwd=Path(cmd[-1]).parent.absolute(), check=False)
     if arguments.sync_save:
-        push_save()
+        push_save(overwrite=True)
 
 
 try:
