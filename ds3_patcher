@@ -19,8 +19,8 @@ exe_hex: str = ''
 
 this_file: str = os.path.basename(__file__)
 
-save_path = Path(yaml.safe_load(
-    open(f'{this_file}.yaml', encoding='utf-8'))['save_path'])
+with open(f'{this_file}.yaml', encoding='utf-8') as cfg:
+    save_path = Path(yaml.safe_load(cfg)['save_path'])
 
 logging.basicConfig(filename=f'{this_file}.log',
                     format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
@@ -104,8 +104,9 @@ def fetch_save() -> None:
 
 def push_save(overwrite: bool) -> None:
     log.info('push save to %s', save_path)
-    status = subprocess.Popen(['git', 'status', '--porcelain'], cwd=save_path,
-                              stdout=subprocess.PIPE, universal_newlines=True).stdout.readline()
+    with subprocess.Popen(['git', 'status', '--porcelain'], cwd=save_path,
+                          stdout=subprocess.PIPE, universal_newlines=True) as proc:
+        status = proc.stdout.readline()
     if len(status) > 0:
         in_save_path(['git', 'add', '.'])
         if overwrite:
